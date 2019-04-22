@@ -123,30 +123,49 @@ void openexception(::std::exception_ptr ex)
 	}
 }
 
-int run(const shared_ptr<Ice::Communicator> &communicator, bool isGrid)
+enum PROXT_TYPE {
+    GRID,
+    DISCOVERY,
+    DIRECT
+};
+
+int run(const shared_ptr<Ice::Communicator> &communicator, PROXT_TYPE proxyType)
 {
 	
 	std::shared_ptr<Media::StreamPrx> stream;
-	if (isGrid)
-	{
-		try
-		{
-			stream = Ice::checkedCast<Media::StreamPrx>(communicator->stringToProxy("stream"));
-		}
-		catch (const Ice::NotRegisteredException &)
-		{
-			auto query = Ice::checkedCast<IceGrid::QueryPrx>(communicator->stringToProxy("MediaGrid/Query"));
-			stream = Ice::checkedCast<Media::StreamPrx>(query->findObjectByType("::Media::Stream"));
-		}
-		catch (const Ice::NoEndpointException &e)
-		{
-			std::cerr << e.what() << std::endl;
-		}
-	}
-	else
-	{
-		stream = Ice::uncheckedCast<Media::StreamPrx>(communicator->propertyToProxy("Stream.Proxy"));
-	}
+    switch (proxyType) {
+    case GRID:
+        try
+        {
+            stream = Ice::checkedCast<Media::StreamPrx>(communicator->stringToProxy("stream"));
+        }
+        catch (const Ice::NotRegisteredException &)
+        {
+            auto query = Ice::checkedCast<IceGrid::QueryPrx>(communicator->stringToProxy("MediaGrid/Query"));
+            stream = Ice::checkedCast<Media::StreamPrx>(query->findObjectByType("::Media::Stream"));
+        }
+        catch (const Ice::NoEndpointException &e)
+        {
+            std::cerr << "-----------------" << std::endl;
+            std::cerr << e.what() << std::endl;
+        }
+        break;
+    case DISCOVERY:
+        try {
+        stream = Ice::checkedCast<Media::StreamPrx>(communicator->stringToProxy("Stream"));
+    } catch(const Ice::NoEndpointException &e) {
+           std::cerr << e.what() << std::endl;
+           return EXIT_FAILURE;
+        }
+
+        break;
+
+    case DIRECT:
+        stream = Ice::uncheckedCast<Media::StreamPrx>(communicator->propertyToProxy("Stream.Proxy"));
+        break;
+    default:
+        break;
+    }
 
 	if (!stream)
 	{
@@ -283,30 +302,40 @@ int main(int argc, char *argv[])
 		// and its dtor destroys this communicator.
 		//
 		//Ice::CommunicatorHolder ich(argc, argv, "config.client");
-		std::shared_ptr<Ice::Communicator> communicator = Ice::initialize("config.client");
+        PROXT_TYPE proxyType;
+        std::string configfile;
+        if( strcmp(argv[1], "discovery") == 0)
+        {
+            proxyType = DISCOVERY;
+            configfile = "config-discovery.client";
+        }
+        else if(strcmp(argv[1], "grid") == 0)
+        {
+            proxyType = GRID;
+            configfile = "gridconfig.client";
+        }
+        else {
+            proxyType = DIRECT;
+            configfile = "config.client";
+        }
+        std::shared_ptr<Ice::Communicator> communicator = Ice::initialize(configfile);
 		//
 		// The communicator initialization removes all Ice-related arguments from argc/argv
 		//
-		if (argc > 1)
+        if (argc > 2)
 		{
 			cerr << argv[0] << ": too many arguments" << endl;
 			status = EXIT_FAILURE;
 		}
 		else
 		{
-			status = run(communicator, false);
+            status = run(communicator, proxyType);
 		}
 	}
 	catch (const std::exception &ex)
 	{
 		cerr << argv[0] << ": " << ex.what() << endl;
 		status = EXIT_FAILURE;
-	}
-
-	if (argc > 1)
-	{
-		std::cerr << argv[0] << ": too many arguments" << std::endl;
-		return EXIT_FAILURE;
 	}
 
 #if 0

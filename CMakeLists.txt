@@ -47,10 +47,15 @@ set(_PROTOBUF_PROTOC slice2cpp)
 
   #include_directories(./hksdk/include)
   #link_directories(/opt/CH_HCNetSDK_V5.2.7.4_build20170606_Linux64/lib /opt/CH_HCNetSDK_V5.2.7.4_build20170606_Linux64/lib/HCNetSDKCom)
-  add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES -DGOOGLE_GLOG_DLL_DECL= -D__x86_64__ )
+  add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES -DGOOGLE_GLOG_DLL_DECL= -D__x86_64__  -DCMAKE_BUILD_TYPE=Debug)
 
 
-  aux_source_directory(. SRCS)
+  #aux_source_directory(. SRCS)
+  set(SOURCES
+      ${CMAKE_SOURCE_DIR}/mediaclinet.cpp
+      ${CMAKE_SOURCE_DIR}/stream.cpp)
+
+
   set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
   link_libraries(  Glacier2++11 IceGrid++11 Ice++11 pthread dl glog libjrtp.a libjthread.a)
-  add_executable(${PROJECT_NAME} ${SRCS} )
+  add_executable(${PROJECT_NAME} ${SOURCES} )
